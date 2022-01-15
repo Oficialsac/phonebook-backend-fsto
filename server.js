@@ -77,13 +77,11 @@ app.post('/api/persons', (request, response) => {
     }
 })
 
-app.put('/api/persons/:id', (request, response) => {
-    const personToUpdate = request.body
-
-
-    persons = persons.map(person => person.id !== personToUpdate.id ? person : { ...person, number: personToUpdate.number })
-    response.status(200).json(persons)
-})
+// app.put('/api/persons/:id', (request, response) => {
+//     const personToUpdate = request.body
+//     persons = persons.map(person => person.id !== personToUpdate.id ? person : { ...person, number: personToUpdate.number })
+//     response.status(200).json(persons)
+// })
 
 const PORT = process.env.PORT || 3001
 
