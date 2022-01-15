@@ -8,7 +8,7 @@ app.use(express.static('build'))
 app.use(cors())
 app.use(express.json())
 
-morgan.token('body', function(req , res ){
+morgan.token('body', function (req, res) {
     return JSON.stringify(req.body)
 })
 
@@ -41,8 +41,8 @@ app.get('/api/persons/:id', (request, response) => {
         response.json(person)
     } else {
         response.status(404).end()
-    }   
-    
+    }
+
 })
 
 app.delete('/api/persons/:id', (request, response) => {
@@ -71,10 +71,18 @@ app.post('/api/persons', (request, response) => {
         return response.status(409).json({
             error: 'name must be unique'
         })
-    }else{
+    } else {
         persons = [...persons, newPerson]
         response.status(201).json(newPerson)
     }
+})
+
+app.put('/api/persons/:id', (request, response) => {
+    const personToUpdate = request.body
+
+
+    persons = persons.map(person => person.id !== personToUpdate.id ? person : { ...person, number: personToUpdate.number })
+    response.status(200).json(persons)
 })
 
 const PORT = process.env.PORT || 3001
