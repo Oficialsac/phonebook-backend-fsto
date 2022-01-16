@@ -1,8 +1,10 @@
-
+require('dotenv').config()
+require('./mongo')
 var morgan = require('morgan')
 const express = require('express')
 const app = express()
 const cors = require('cors')
+const persons = require('./models/persons')
 
 app.use(express.static('build'))
 app.use(cors())
@@ -14,76 +16,94 @@ morgan.token('body', function (req, res) {
 
 app.use(morgan(':method :url :status :response-time ms :body'))
 
-let persons = [
-    { id: 1, name: 'Arto Hellas', number: '040-123456' },
-    { id: 2, name: 'Ada Lovelace', number: '39-44-5323523' },
-    { id: 3, name: 'Dan Abramov', number: '12-43-234345' },
-    { id: 4, name: 'Mary Poppendieck', number: '39-23-6423122' }
-]
-
-app.get('/', (request, response) => {
-    response.send('<h1>Hello Phonebook<h1>')
-})
 
 app.get('/api/persons', (request, response) => {
-    response.json(persons)
+    persons.find({})
+        .then(res => {
+            response.json(res)
+        })
 })
 
-app.get('/info', (request, response) => {
-    const bookLength = persons.length
-    response.send(`The phonebook has info for ${bookLength} people <br>${new Date()}</br>`)
-})
+app.get('/api/persons/:id', (request, response, next) => {
 
-app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const person = persons.find(person => person.id === id)
-    if (person) {
-        response.json(person)
-    } else {
-        response.status(404).end()
-    }
+    const { id } = request.params
+    persons.findById(id)
+        .then(res => {
+            response.json(res)
+        }).catch(error => {
+            next(error)
+        })
 
 })
 
-app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    persons = persons.filter(person => person.id !== id)
-    response.status(204).end()
+app.delete('/api/persons/:id', (request, response, next) => {
+    const { id } = request.params
+    persons.findByIdAndRemove(id)
+        .then(res => {
+            response.status(204).end()
+        }).catch(error => {
+            console.error(error.name);
+            next(error)
+        })
 })
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response , next) => {
     const person = request.body
 
-    if (!person.number || !person.name) {
-        return response.status(400).json({
-            error: 'Name or number is missing'
+    // if (!person.number || !person.name) {
+    //     return response.status(400).json({
+    //         error: 'Name or number is missing'
+    //     })
+    // }
+
+    const newPerson = new persons({
+        name: person.name,
+        number: person.number
+    })
+
+
+    newPerson.save()
+        .then(res => {
+            response.status(201).json(res)
+        }).catch( error  => {
+            console.error("ADAWDAWD", error);
+            next(error)
         })
-    }
-    const ids = persons.map(person => person.id)
-    const maxId = Math.max(...ids)
-    const newPerson = {
-        id: maxId + 1,
+
+})
+
+app.put('/api/persons/:id', (request, response , next) => {
+    const { id } = request.params
+    const person = request.body
+
+    console.log(id);
+    const newPersonInfo = {
         name: person.name,
         number: person.number
     }
 
-    if (persons.some(person => person.name === newPerson.name)) {
-        return response.status(409).json({
-            error: 'name must be unique'
+    persons.findByIdAndUpdate( id , newPersonInfo, {new : true})
+        .then( result => {
+            response.json(result)
+        }).catch( error => {
+            console.error(error.name);
+            next(error)
         })
-    } else {
-        persons = [...persons, newPerson]
-        response.status(201).json(newPerson)
+  
+})
+
+app.use((error, request, response, next) => {
+    const { name } = request.body
+    console.error("eroor",error.name)   
+    if (error.name === 'CastError') {
+        return response.status(400).send( {error: 'id is malformated , please check this and recharge'})
+    } else if( error.name === 'ValidationError'){
+        return response.status(400).send( 
+            {error: `"Note validation failed:" content: Path ('${name}') is shorter than the minimun allowed length (5) `})
     }
 })
 
-// app.put('/api/persons/:id', (request, response) => {
-//     const personToUpdate = request.body
-//     persons = persons.map(person => person.id !== personToUpdate.id ? person : { ...person, number: personToUpdate.number })
-//     response.status(200).json(persons)
-// })
-
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT
 
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`)
